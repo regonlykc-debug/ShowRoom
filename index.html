@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <title>Khalaifat Catalogues</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -152,10 +155,25 @@
   .page-nav:disabled{opacity:.22;cursor:default;}
   .page-nav:active{transform:translateY(-50%) scale(.92);}
 
+  /* ---------- splash screen ---------- */
+  .splash{position:fixed;inset:0;z-index:100;background:var(--navy);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:28px;cursor:pointer;transition:opacity .5s ease;}
+  .splash.hide{opacity:0;pointer-events:none;}
+  .splash img{height:100px;width:auto;}
+  .splash-text{font-size:.82rem;letter-spacing:.18em;text-transform:uppercase;
+    color:rgba(247,245,241,.5);animation:pulse 2s ease-in-out infinite;}
+  @keyframes pulse{0%,100%{opacity:.5;}50%{opacity:1;}}
+
   @media (prefers-reduced-motion: reduce){*{transition:none !important;}}
 </style>
 </head>
 <body>
+
+  <div class="splash" id="splash">
+    <img src="assets/white-transparetn.png" alt="Khalaifat">
+    <div class="splash-text">Tap to enter</div>
+  </div>
 
   <header class="topbar">
     <div class="brandmark">
@@ -206,6 +224,14 @@
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
   <script>
+  document.getElementById('splash').addEventListener('click', ()=>{
+    const el = document.documentElement;
+    const rfs = el.requestFullscreen || el.webkitRequestFullscreen || el.msRequestFullscreen;
+    if(rfs) rfs.call(el).catch(()=>{});
+    document.getElementById('splash').classList.add('hide');
+    setTimeout(()=>{ document.getElementById('splash').remove(); }, 600);
+  });
+
   /* ==========================================================
      BRAND / CATALOGUE CONFIG
      To add a brand: drop its PDF(s) in pdfs/<brand-id>/ and add
