@@ -139,9 +139,17 @@
     text-transform:uppercase;cursor:pointer;}
 
   .page-stage{flex:1;display:flex;align-items:center;justify-content:center;
-    position:relative;padding:8px 76px 28px;}
+    position:relative;padding:8px 76px 28px;overflow:auto;}
   #pdfCanvas{background:#fff;box-shadow:0 30px 60px rgba(0,0,0,.35);
-    max-width:100%;max-height:100%;border-radius:2px;visibility:hidden;}
+    border-radius:2px;visibility:hidden;transition:transform .2s ease;transform-origin:center center;}
+
+  /* ---------- zoom controls ---------- */
+  .zoom-controls{display:flex;align-items:center;gap:8px;}
+  .zoom-btn{background:none;border:1px solid rgba(247,245,241,.3);color:var(--paper);
+    border-radius:3px;width:36px;height:36px;font-size:1.2rem;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;}
+  .zoom-btn:hover{background:rgba(247,245,241,.1);}
+  .zoom-level{font-size:.72rem;letter-spacing:.08em;color:rgba(247,245,241,.6);min-width:40px;text-align:center;}
   .loading{position:absolute;color:rgba(247,245,241,.7);font-size:.82rem;
     letter-spacing:.08em;text-transform:uppercase;}
 
@@ -213,6 +221,12 @@
     <div class="viewer-bar">
       <button id="viewerClose">Close ✕</button>
       <div class="viewer-title" id="viewerTitle"></div>
+      <div class="zoom-controls">
+        <button class="zoom-btn" id="zoomOut" aria-label="Zoom out">−</button>
+        <span class="zoom-level" id="zoomLevel">100%</span>
+        <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
+        <button class="zoom-btn" id="zoomReset" aria-label="Reset zoom" style="font-size:.65rem;letter-spacing:.05em;width:auto;padding:0 10px;">FIT</button>
+      </div>
       <div class="viewer-progress" id="viewerProgress"></div>
     </div>
     <button class="page-nav prev" id="prevPage" aria-label="Previous page">‹</button>
@@ -363,9 +377,20 @@
   }
 
   let pdfDoc = null, pageNum = 1, rendering = false;
+  let zoomFactor = 1;
+  const ZOOM_STEP = 0.25;
+  const ZOOM_MIN  = 0.5;
+  const ZOOM_MAX  = 3;
+  const zoomLevelEl = document.getElementById('zoomLevel');
+
+  function updateZoomUI(){
+    zoomLevelEl.textContent = Math.round(zoomFactor * 100) + '%';
+  }
 
   async function openViewer(brand, cat){
     closeDrawer();
+    zoomFactor = 1;
+    updateZoomUI();
     viewerTitle.textContent = `${brand.name} — ${cat.title} ${cat.year}`;
     viewerProgress.textContent = '';
     viewer.classList.add('open');
@@ -388,6 +413,8 @@
     viewer.setAttribute('aria-hidden','true');
     scrim.classList.remove('show');
     pdfDoc = null;
+    zoomFactor = 1;
+    updateZoomUI();
   }
 
   async function renderPage(num){
@@ -398,7 +425,8 @@
     const maxW  = stageEl.clientWidth  - 140;
     const maxH  = stageEl.clientHeight - 40;
     const base  = page.getViewport({ scale: 1 });
-    const scale = Math.min(maxW / base.width, maxH / base.height);
+    const fitScale = Math.min(maxW / base.width, maxH / base.height);
+    const scale = fitScale * zoomFactor;
     const dpr   = window.devicePixelRatio || 1;
     const viewport = page.getViewport({ scale: scale * dpr });
 
@@ -415,6 +443,44 @@
     nextBtn.disabled = num >= pdfDoc.numPages;
     rendering = false;
   }
+
+  document.getElementById('zoomIn').addEventListener('click', ()=>{
+    if(zoomFactor < ZOOM_MAX){ zoomFactor = Math.min(zoomFactor + ZOOM_STEP, ZOOM_MAX); updateZoomUI(); renderPage(pageNum); }
+  });
+  document.getElementById('zoomOut').addEventListener('click', ()=>{
+    if(zoomFactor > ZOOM_MIN){ zoomFactor = Math.max(zoomFactor - ZOOM_STEP, ZOOM_MIN); updateZoomUI(); renderPage(pageNum); }
+  });
+  document.getElementById('zoomReset').addEventListener('click', ()=>{
+    zoomFactor = 1; updateZoomUI(); renderPage(pageNum);
+  });
+
+  // pinch-to-zoom on touch devices
+  let pinchStartDist = null, pinchStartZoom = 1;
+  stageEl.addEventListener('touchstart', e=>{
+    if(e.touches.length === 2){
+      pinchStartDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      pinchStartZoom = zoomFactor;
+    }
+  }, { passive: true });
+  stageEl.addEventListener('touchmove', e=>{
+    if(e.touches.length === 2 && pinchStartDist){
+      const dist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      zoomFactor = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, pinchStartZoom * (dist / pinchStartDist)));
+      updateZoomUI();
+      renderPage(pageNum);
+    }
+  }, { passive: true });
+  stageEl.addEventListener('touchend', ()=>{ pinchStartDist = null; }, { passive: true });
+
+  // scroll-to-zoom on desktop
+  stageEl.addEventListener('wheel', e=>{
+    if(!viewer.classList.contains('open')) return;
+    e.preventDefault();
+    const delta = e.deltaY > 0 ? -ZOOM_STEP : ZOOM_STEP;
+    zoomFactor = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoomFactor + delta));
+    updateZoomUI();
+    renderPage(pageNum);
+  }, { passive: false });
 
   prevBtn.addEventListener('click', ()=>{ if(pageNum>1){ pageNum--; renderPage(pageNum); } });
   nextBtn.addEventListener('click', ()=>{ if(pdfDoc && pageNum<pdfDoc.numPages){ pageNum++; renderPage(pageNum); } });
