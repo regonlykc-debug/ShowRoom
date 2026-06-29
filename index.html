@@ -275,9 +275,18 @@
       catalogues: [
         { title: 'Innovations', year: '2026', file: 'pdfs/nolte/Innovationen_2026_DE_WEB (1) (2).pdf' }
       ]
+    },
+    {
+      id: 'express',
+      name: 'EXPRESS',
+      tagline: 'Kitchens by Nolte Group',
+      logos: ['assets/Express by Nolte group Logo copy.svg'],
+      catalogues: [
+        { title: 'Kitchen Journal', year: '2025', file: 'pdfs/express/Express Küchen_JOURNAL_WEB (1).pdf' }
+      ]
     }
   ];
-  const EMPTY_SLOTS = 2; // "Add brand" placeholders shown on the shelf
+  const EMPTY_SLOTS = 1; // "Add brand" placeholders shown on the shelf
 
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
