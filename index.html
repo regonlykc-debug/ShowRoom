@@ -266,9 +266,18 @@
       catalogues: [
         { title: 'Product Guide', year: '2026', file: 'pdfs/cosentino/PRODUCTGUIDE 2026[95].pdf' }
       ]
+    },
+    {
+      id: 'nolte',
+      name: 'NOLTE',
+      tagline: 'German kitchen innovation',
+      logos: ['assets/Nolte_Küchen_logo copy.svg'],
+      catalogues: [
+        { title: 'Innovations', year: '2026', file: 'pdfs/nolte/Innovationen_2026_DE_WEB (1) (2).pdf' }
+      ]
     }
   ];
-  const EMPTY_SLOTS = 3; // "Add brand" placeholders shown on the shelf
+  const EMPTY_SLOTS = 2; // "Add brand" placeholders shown on the shelf
 
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
