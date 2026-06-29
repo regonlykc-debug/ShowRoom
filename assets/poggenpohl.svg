@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 100" fill="none">
+  <text x="0" y="68" font-family="'Inter','Helvetica Neue',Arial,sans-serif" font-weight="400" font-size="52" letter-spacing="-1" fill="#000">poggenpohl</text>
+  <rect x="310" y="28" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="325" y="28" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="340" y="28" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="310" y="43" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="325" y="43" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="340" y="43" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="310" y="58" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="325" y="58" width="12" height="12" rx="1" fill="#000"/>
+  <rect x="340" y="58" width="12" height="12" rx="1" fill="#000"/>
+</svg>
