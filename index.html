@@ -267,7 +267,7 @@
       id: 'poggenpohl',
       name: 'POGGENPOHL',
       tagline: 'Luxury kitchen architecture since 1892',
-      logos: ['assets/poggenpohl.svg'],
+      logos: ['assets/pp.svg'],
       catalogues: [
         { title: 'Kitchen Architecture', year: '2025', file: 'pdfs/poggenpohl/Poggenpohl_Catalogue_Kitchen_Architecture_EN.pdf' }
       ]
@@ -298,9 +298,36 @@
       catalogues: [
         { title: 'Kitchen Journal', year: '2025', file: 'pdfs/express/Express Küchen_JOURNAL_WEB (1).pdf' }
       ]
+    },
+    {
+      id: 'elba',
+      name: 'ELBA',
+      tagline: 'Built-in cooking solutions',
+      logos: ['assets/elba logo.svg'],
+      catalogues: [
+        { title: 'Built-In Cooking Range', year: '2025', file: 'pdfs/elba/ELBA EXPORT 2025 built in cooking range_V1.pdf' }
+      ]
+    },
+    {
+      id: 'elica',
+      name: 'ELICA',
+      tagline: 'Italian kitchen hoods',
+      logos: ['assets/elica logo.svg'],
+      catalogues: [
+        { title: 'Product Catalogue', year: '2025', file: 'pdfs/elica/Elica_Catalogo_ITA_21X28_web_Senza prezzi.pdf' }
+      ]
+    },
+    {
+      id: 'bosch',
+      name: 'BOSCH',
+      tagline: 'Invented for life',
+      logos: ['assets/bosch logo.svg'],
+      catalogues: [
+        { title: 'Freestanding Catalogue', year: '2026', file: 'pdfs/bosch/UAE Bosch FS Catalouge 2026.pdf' }
+      ]
     }
   ];
-  const EMPTY_SLOTS = 1; // "Add brand" placeholders shown on the shelf
+  const EMPTY_SLOTS = 0; // "Add brand" placeholders shown on the shelf
 
   pdfjsLib.GlobalWorkerOptions.workerSrc =
     'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
