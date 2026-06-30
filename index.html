@@ -389,6 +389,8 @@
           <div class="cc-year">${cat.year}</div>
         </div>
         <div class="cc-arrow">›</div>`;
+      card.addEventListener('pointerenter', ()=>prefetchPdf(cat.file));
+      card.addEventListener('touchstart', ()=>prefetchPdf(cat.file), { passive:true });
       card.addEventListener('click', ()=>openViewer(brand, cat));
       card.addEventListener('keydown', e=>{ if(e.key==='Enter') openViewer(brand,cat); });
       drawerList.appendChild(card);
@@ -409,9 +411,15 @@
   const ZOOM_MIN  = 0.5;
   const ZOOM_MAX  = 3;
   const zoomLevelEl = document.getElementById('zoomLevel');
+  const pdfCache = {};
 
   function updateZoomUI(){
     zoomLevelEl.textContent = Math.round(zoomFactor * 100) + '%';
+  }
+
+  function prefetchPdf(file){
+    if(pdfCache[file]) return;
+    pdfCache[file] = pdfjsLib.getDocument(file).promise;
   }
 
   async function openViewer(brand, cat){
@@ -427,7 +435,8 @@
     loadingEl.textContent = 'Loading…';
     canvas.style.visibility = 'hidden';
     try{
-      pdfDoc = await pdfjsLib.getDocument(cat.file).promise;
+      if(!pdfCache[cat.file]) pdfCache[cat.file] = pdfjsLib.getDocument(cat.file).promise;
+      pdfDoc = await pdfCache[cat.file];
       pageNum = 1;
       await renderPage(pageNum);
     }catch(err){
