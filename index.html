@@ -91,7 +91,17 @@
   .explore-btn:hover{background:var(--brass);color:var(--navy);}
 
   /* ---------- AI chat widget ---------- */
-  .ai-chat{position:fixed;right:clamp(16px,4vw,40px);bottom:clamp(16px,4vw,40px);
+  .ai-launcher{position:fixed;right:clamp(16px,4vw,40px);bottom:clamp(16px,4vw,40px);
+    width:60px;height:60px;border-radius:50%;background:var(--brass);color:var(--navy);
+    border:none;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer;z-index:81;
+    display:flex;align-items:center;justify-content:center;}
+  .ai-launcher::before{content:"";position:absolute;inset:0;border-radius:50%;
+    background:var(--brass);opacity:.55;animation:ai-pulse 2.6s ease-out infinite;}
+  @keyframes ai-pulse{0%{transform:scale(1);opacity:.55;}100%{transform:scale(1.6);opacity:0;}}
+  @media (prefers-reduced-motion: reduce){.ai-launcher::before{animation:none;}}
+  .ai-launcher-spark{position:absolute;top:-4px;right:-4px;color:var(--navy);
+    background:var(--paper);border-radius:50%;padding:2px;box-shadow:0 2px 6px rgba(0,0,0,.25);}
+  .ai-chat{position:fixed;right:clamp(16px,4vw,40px);bottom:calc(clamp(16px,4vw,40px) + 76px);
     width:min(360px,88vw);max-height:min(520px,72vh);background:var(--paper);color:var(--ink);
     border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.35);z-index:80;
     display:flex;flex-direction:column;overflow:hidden;
@@ -140,8 +150,6 @@
   .drawer.open{transform:translateX(0);}
   .drawer-close{align-self:flex-end;background:none;border:none;font-size:.76rem;
     letter-spacing:.1em;text-transform:uppercase;color:var(--steel);cursor:pointer;padding:8px 4px;}
-  .ai-drawer-btn{background:none;border:none;font-family:inherit;font-size:.76rem;
-    letter-spacing:.1em;text-transform:uppercase;color:var(--brass);cursor:pointer;padding:8px 4px;}
   .drawer h2{font-family:'Poppins',sans-serif;font-weight:600;font-size:1.9rem;margin:8px 0 4px;}
   .drawer-sub{color:var(--steel);font-size:.84rem;margin-bottom:26px;}
   .drawer-list{display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
@@ -234,10 +242,19 @@
   <footer>
     <span>Khalaifat Co. W.L.L — Digital Catalogue Wall</span>
     <div class="footer-actions">
-      <button class="explore-btn" id="aiToggle">Ask AI</button>
       <button class="explore-btn" id="exploreBtn">Explore All Catalogues</button>
     </div>
   </footer>
+
+  <button class="ai-launcher" id="aiToggle" aria-label="Ask AI">
+    <svg viewBox="0 0 24 24" width="26" height="26" fill="none" aria-hidden="true">
+      <rect x="2.5" y="4.5" width="19" height="13" rx="4" fill="currentColor"/>
+      <path d="M8 17.5v3.8a.6.6 0 0 0 1 .45l4.6-4.25H8Z" fill="currentColor"/>
+    </svg>
+    <svg class="ai-launcher-spark" viewBox="0 0 24 24" width="14" height="14" fill="none" aria-hidden="true">
+      <path d="M12 2 14 9 21 11 14 13 12 20 10 13 3 11 10 9Z" fill="currentColor"/>
+    </svg>
+  </button>
 
   <div class="ai-chat" id="aiChat" aria-hidden="true">
     <div class="ai-chat-head">
@@ -258,10 +275,7 @@
   <div class="scrim" id="scrim"></div>
 
   <aside class="drawer" id="drawer" aria-hidden="true">
-    <div style="display:flex;justify-content:space-between;align-items:center;">
-      <button class="ai-drawer-btn" id="aiToggleDrawer">Ask AI</button>
-      <button class="drawer-close" id="drawerClose">Close ✕</button>
-    </div>
+    <button class="drawer-close" id="drawerClose">Close ✕</button>
     <h2 id="drawerTitle"></h2>
     <p class="drawer-sub" id="drawerSub"></p>
     <div class="drawer-list" id="drawerList"></div>
@@ -276,7 +290,6 @@
         <span class="zoom-level" id="zoomLevel">100%</span>
         <button class="zoom-btn" id="zoomIn" aria-label="Zoom in">+</button>
         <button class="zoom-btn" id="zoomReset" aria-label="Reset zoom" style="font-size:.65rem;letter-spacing:.05em;width:auto;padding:0 10px;">FIT</button>
-        <button class="zoom-btn" id="aiToggleViewer" aria-label="Ask AI" style="font-size:.65rem;letter-spacing:.05em;width:auto;padding:0 10px;">AI</button>
       </div>
       <div class="viewer-progress" id="viewerProgress"></div>
     </div>
@@ -668,8 +681,6 @@
     aiChat.classList.contains('open') ? closeAiChat() : openAiChat();
   }
   document.getElementById('aiToggle').addEventListener('click', toggleAiChat);
-  document.getElementById('aiToggleViewer').addEventListener('click', toggleAiChat);
-  document.getElementById('aiToggleDrawer').addEventListener('click', toggleAiChat);
   document.getElementById('aiChatClose').addEventListener('click', closeAiChat);
   aiChatSend.addEventListener('click', aiSend);
   aiChatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') aiSend(); });
