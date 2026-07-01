@@ -13,8 +13,23 @@ from sentence_transformers import SentenceTransformer
 KB_FILE = "knowledge_base.json"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 MODEL = "qwen2.5:7b"
-TOP_K = 5
-BRAND_MATCH_CUTOFF = 0.75  # high enough to avoid "electric"->ELICA, "expensive"->EXPRESS false positives
+
+# MUST match index_pdfs.py. e5 needs "query: " on questions and "passage: " on
+# documents (the passages were already prefixed at index time).
+EMBED_MODEL = "intfloat/multilingual-e5-base"
+QUERY_PREFIX = "query: "
+
+TOP_K = 8                    # was 5 — more coverage on big brands (ELICA has the most chunks)
+BRAND_MATCH_CUTOFF = 0.75    # high enough to avoid "electric"->ELICA, "expensive"->EXPRESS false positives
+
+# e5's cosine-similarity space is compressed and doesn't separate relevant from
+# irrelevant the way the old MiniLM model's did — measured a genuine Arabic Bosch
+# question at 0.76 and pure gibberish at 0.83 on this same knowledge base, i.e. the
+# "irrelevant" query scored HIGHER. There's no absolute cutoff that works here, so we
+# don't reject on score at all; "say so honestly if this doesn't answer the question"
+# in the prompt (tested and working) carries that job instead.
+MIN_SCORE_BRAND_NAMED = 0.0
+MIN_SCORE_GENERAL = 0.0
 
 app = FastAPI()
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -24,6 +39,8 @@ with open(KB_FILE, "r", encoding="utf-8") as f:
     knowledge_base = json.load(f)
 
 embeddings_matrix = np.array([c["embedding"] for c in knowledge_base], dtype=np.float32)
+# Vectors are stored normalized by the indexer, but re-normalize defensively in case
+# an older knowledge_base.json (built with a different model) is loaded.
 norms = np.linalg.norm(embeddings_matrix, axis=1, keepdims=True)
 embeddings_matrix = embeddings_matrix / np.clip(norms, 1e-10, None)
 
@@ -80,8 +97,19 @@ def is_appliance_question(question: str) -> bool:
             return True
     return False
 
-print("Loading embedding model...")
-embed_model = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+# Spec-type questions ("how wide", "what capacity", "energy class") should prefer
+# chunks that actually contain a spec table — those are marked [SPECS] by the indexer.
+# A small additive boost is enough to float them up without overriding real relevance.
+SPEC_QUERY = re.compile(
+    r"\b(dimension|size|width|height|depth|cm|mm|capacity|litre|liter|energy|class|"
+    r"power|watt|kw|weight|kg|spec|specification|measure)\b|"
+    r"مقاس|أبعاد|عرض|ارتفاع|عمق|سعة|لتر|طاقة|كفاءة|وزن|واط|مواصفات",
+    re.IGNORECASE,
+)
+SPEC_BOOST = 0.05
+
+print(f"Loading embedding model: {EMBED_MODEL}")
+embed_model = SentenceTransformer(EMBED_MODEL)
 print("Server ready!")
 
 class Question(BaseModel):
@@ -132,16 +160,28 @@ def find_relevant_chunks(question: str, top_k: int = TOP_K):
     # chunks (ELICA has 262 of 477, over half the knowledge base).
     corrected_question, brand = correct_brand_typos(question)
     if brand:
-        candidate_indices = BRAND_INDICES[brand]
+        candidate_indices = list(BRAND_INDICES[brand])
     elif is_appliance_question(question):
         candidate_indices = [i for b in APPLIANCE_BRANDS for i in BRAND_INDICES[b]]
     else:
-        candidate_indices = range(len(knowledge_base))
+        candidate_indices = list(range(len(knowledge_base)))
 
-    q_emb = embed_model.encode([corrected_question])[0].astype(np.float32)
-    q_emb = q_emb / np.clip(np.linalg.norm(q_emb), 1e-10, None)
+    # e5 requires the "query: " prefix on the question side.
+    q_emb = embed_model.encode(
+        [QUERY_PREFIX + corrected_question], normalize_embeddings=True
+    )[0].astype(np.float32)
     scores = embeddings_matrix @ q_emb
-    ranked = sorted(candidate_indices, key=lambda i: -scores[i])[:top_k]
+
+    # Spec questions: nudge chunks that carry an actual spec table to the top.
+    if SPEC_QUERY.search(question):
+        rank_scores = scores.copy()
+        for i in candidate_indices:
+            if "[SPECS]" in knowledge_base[i]["text"]:
+                rank_scores[i] += SPEC_BOOST
+    else:
+        rank_scores = scores
+
+    ranked = sorted(candidate_indices, key=lambda i: -rank_scores[i])[:top_k]
 
     results = []
     seen = set()
@@ -150,7 +190,13 @@ def find_relevant_chunks(question: str, top_k: int = TOP_K):
         key = chunk["text"][:80]
         if key not in seen:
             seen.add(key)
-            results.append({"brand": chunk["brand"], "file": chunk["file"], "text": chunk["text"], "score": float(scores[i])})
+            results.append({
+                "brand": chunk["brand"],
+                "file": chunk["file"],
+                "page": chunk.get("page"),
+                "text": chunk["text"],
+                "score": float(scores[i]),  # report true similarity, not the boosted one
+            })
     return results, brand
 
 # Characters that only show up in the catalogues' source languages (German/Italian/
@@ -201,7 +247,7 @@ def generate_answer(question: str, context: str, answer_language: str, sources: 
 
 IMPORTANT RULE: {rule}
 {scope_block}
-Be concise and helpful. Plain text only — no markdown, no asterisks, no underscores for emphasis. If the catalogue information below doesn't actually answer the question, say so honestly instead of guessing — do not invent or assume products a brand might sell.
+Be concise and helpful. Lines starting with [SPECS] are exact specification data (dimensions, capacity, energy class) pulled from a table — use them directly when the customer asks about specs. Plain text only — no markdown, no asterisks, no underscores for emphasis. If the catalogue information below doesn't actually answer the question, say so honestly instead of guessing — do not invent or assume products a brand might sell.
 
 Catalogue Information:
 {context}
@@ -212,7 +258,7 @@ Reminder: {rule}
 
 Answer (in {answer_language} only, plain text, no markdown):"""
 
-    response = requests.post(OLLAMA_URL, json={"model": MODEL, "prompt": prompt, "stream": False}, timeout=60)
+    response = requests.post(OLLAMA_URL, json={"model": MODEL, "prompt": prompt, "stream": False}, timeout=90)
     return response.json().get("response", "").strip()
 
 # Belt-and-suspenders: the "no markdown" instruction above isn't 100% reliable, and a
@@ -230,11 +276,13 @@ async def ask(q: Question):
     # A bare brand name ("bosch") scores low against prose catalogue text purely
     # because a single word never embeds close to a paragraph — but we already know
     # exactly what brand it's about, so don't reject it for a weak similarity score.
-    min_score = 0.05 if brand_named else 0.2
+    # e5's cosine similarities sit higher than the old MiniLM model's, so these were
+    # re-measured against this knowledge base rather than reused from the old model.
+    min_score = MIN_SCORE_BRAND_NAMED if brand_named else MIN_SCORE_GENERAL
     if not chunks or chunks[0]["score"] < min_score:
         return {"answer": "لم أجد معلومات كافية في الكتالوجات للإجابة على هذا السؤال. / I couldn't find enough information in the catalogues to answer this question.", "sources": []}
 
-    context = "\n\n".join([f"[{c['brand']} - {c['file']}]\n{c['text']}" for c in chunks])
+    context = "\n\n".join([f"[{c['brand']} - {c['file']} p.{c.get('page', '?')}]\n{c['text']}" for c in chunks])
     sources = list({c["brand"] for c in chunks})
 
     is_arabic = any('؀' <= ch <= 'ۿ' for ch in q.question)
@@ -244,8 +292,12 @@ async def ask(q: Question):
         answer = generate_answer(q.question, context, answer_language, sources)
         # The catalogues themselves are German/Italian/French — the model sometimes
         # slips into the source language instead of the customer's. Catch that and
-        # force one corrective rewrite rather than silently returning the wrong language.
-        if is_wrong_language(answer, answer_language):
+        # force a corrective rewrite rather than silently returning the wrong language.
+        # Two retries: a single retry occasionally lands on another bad sample too
+        # (seen once with a mixed English/Arabic question producing Chinese twice).
+        for _ in range(2):
+            if not is_wrong_language(answer, answer_language):
+                break
             answer = generate_answer(q.question, context, answer_language, sources, retry=True)
         answer = strip_markdown(answer)
     except Exception as e:
@@ -255,7 +307,7 @@ async def ask(q: Question):
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "model": MODEL, "chunks": len(knowledge_base)}
+    return {"status": "ok", "model": MODEL, "embed_model": EMBED_MODEL, "chunks": len(knowledge_base)}
 
 @app.get("/", response_class=HTMLResponse)
 async def ui():
