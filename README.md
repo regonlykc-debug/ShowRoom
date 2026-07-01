@@ -6,11 +6,27 @@ open a drawer of its catalogues, tap a catalogue to read it full-screen, page
 by page, rendered from the real PDF (not the browser's native PDF viewer).
 
 ## Run it
-Just open `index.html` in a browser, or upload the whole folder to any web
-host / the Odoo Website custom code area. Needs an internet connection once,
-to load:
+Do **not** just double-click `index.html` — opening it as a `file://` URL
+makes browsers block the PDF fetches (CORS), so every catalogue will fail
+to load. Instead, serve the folder over HTTP:
+
+- **Mac/Linux:** run `./start.sh`, then open `http://localhost:8080`
+- **Windows:** run `start.bat`, then open `http://localhost:8080`
+
+(Or upload the whole folder to any web host / the Odoo Website custom code
+area, which serves it over http(s) automatically.)
+
+Needs an internet connection once, to load:
 - Google Fonts (Fraunces + Inter)
 - pdf.js from cdnjs.cloudflare.com (used to render the PDF pages on canvas)
+
+## AI chat assistant
+A small "Ask AI" button in the footer opens a chat panel that answers
+questions about the catalogues (see `ai/README`-style scripts in `ai/`). It
+talks to the local RAG server on port 8000 — start it separately with
+`ai/3_start_server.sh` (or `.bat`). The site (port 8080) and the AI server
+(port 8000) run side by side on the same kiosk PC. If the AI server isn't
+running, the chat button still shows but says the assistant is offline.
 
 If this needs to run fully offline (e.g. an in-store kiosk with no Wi-Fi),
 download pdf.js + the two fonts and reference them locally instead of the
