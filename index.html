@@ -623,6 +623,7 @@
   const aiChatBody  = document.getElementById('aiChatBody');
   const aiChatInput = document.getElementById('aiChatInput');
   const aiChatSend  = document.getElementById('aiChatSend');
+  const aiChatWelcomeHTML = aiChatBody.innerHTML;
   let aiBusy = false;
 
   function aiAddMessage(text, type, sources){
@@ -675,6 +676,8 @@
   function closeAiChat(){
     aiChat.classList.remove('open');
     aiChat.setAttribute('aria-hidden', 'true');
+    aiChatBody.innerHTML = aiChatWelcomeHTML;
+    aiChatInput.value = '';
   }
 
   function toggleAiChat(){
