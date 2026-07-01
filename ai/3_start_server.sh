@@ -3,7 +3,7 @@ echo "============================================"
 echo "  Khalaifat Showroom AI - Starting Server"
 echo "============================================"
 echo ""
-echo "Tablet can connect at: http://192.168.100.62:8000"
+echo "Tablet can connect at: http://192.168.100.58:8000"
 echo ""
 
 # Start Ollama in background if not running
