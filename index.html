@@ -671,7 +671,10 @@
   function openAiChat(){
     aiChat.classList.add('open');
     aiChat.setAttribute('aria-hidden', 'false');
-    aiChatInput.focus();
+    // On a touch device, focusing immediately pops the on-screen keyboard before the
+    // customer has even seen the panel, making it look like it never opened. Let them
+    // tap the input themselves when ready to type; keep the convenience on desktop.
+    if(!window.matchMedia('(pointer: coarse)').matches) aiChatInput.focus();
   }
   function closeAiChat(){
     aiChat.classList.remove('open');
@@ -687,6 +690,26 @@
   document.getElementById('aiChatClose').addEventListener('click', closeAiChat);
   aiChatSend.addEventListener('click', aiSend);
   aiChatInput.addEventListener('keydown', e=>{ if(e.key==='Enter') aiSend(); });
+
+  // Tablets' on-screen keyboard shrinks the *visible* viewport, but a fixed,
+  // bottom-anchored panel stays pinned to the bottom of the full page layout —
+  // which is now behind the keyboard. Re-anchor to the top of whatever's actually
+  // visible while the keyboard is open, using the VisualViewport API.
+  if(window.visualViewport){
+    window.visualViewport.addEventListener('resize', ()=>{
+      const vh = window.visualViewport.height;
+      const keyboardOpen = vh < window.innerHeight * 0.75;
+      if(keyboardOpen){
+        aiChat.style.top = '10px';
+        aiChat.style.bottom = 'auto';
+        aiChat.style.maxHeight = (vh - 20) + 'px';
+      }else{
+        aiChat.style.top = '';
+        aiChat.style.bottom = '';
+        aiChat.style.maxHeight = '';
+      }
+    });
+  }
 
   /* ==========================================================
      AUTO-BROWSE / KIOSK SCREENSAVER
