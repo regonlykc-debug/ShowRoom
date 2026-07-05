@@ -9,235 +9,35 @@
 <title>Khalaifat Catalogues</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&display=swap" rel="stylesheet">
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:ital,wght@0,100;0,200;0,300;0,400;0,500;0,600;0,700;0,800;0,900;1,100;1,200;1,300;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
-  :root{
-    --navy:#263B59;
-    --steel:#45738E;
-    --pale:#D3E5E8;
-    --brass:#B8935A;
-    --paper:#F7F5F1;
-    --ink:#1B2A3D;
-  }
-  *{box-sizing:border-box;}
-  html,body{margin:0;height:100%;}
-  body{
-    background:radial-gradient(circle at 18% -10%, #2f496c 0%, var(--navy) 55%);
-    color:var(--paper);
-    font-family:'Poppins',sans-serif;
-    -webkit-font-smoothing:antialiased;
-    min-height:100vh;
-  }
-  button{font-family:inherit;}
-  :focus-visible{outline:2px solid var(--brass);outline-offset:3px;}
-
-  /* ---------- top bar ---------- */
-  .topbar{display:flex;justify-content:space-between;align-items:center;
-    padding:28px clamp(24px,5vw,64px);font-family:'Inter',sans-serif;}
-  .brandmark{display:flex;align-items:center;}
-  .brandmark img{height:70px;width:auto;}
-  .hint{font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:rgba(247,245,241,.5);}
-
-  /* ---------- hero ---------- */
-  .hero{position:relative;padding:clamp(8px,3vw,24px) clamp(24px,5vw,64px) clamp(40px,6vw,68px);font-family:'Inter',sans-serif;}
-  .hero::after{content:"";position:absolute;left:clamp(24px,5vw,64px);right:clamp(24px,5vw,64px);
-    bottom:0;height:1px;background:linear-gradient(90deg,var(--brass),transparent 65%);opacity:.55;}
-  .eyebrow{font-size:.74rem;letter-spacing:.2em;text-transform:uppercase;color:var(--brass);margin:0 0 16px;}
-  .hero h1{font-family:'Fraunces',serif;font-weight:500;font-size:clamp(2.2rem,5.6vw,3.8rem);
-    line-height:1.06;margin:0 0 18px;}
-  .hero h1 em{font-style:italic;color:var(--pale);font-weight:300;}
-  .hero-sub{max-width:48ch;color:rgba(247,245,241,.72);font-size:1rem;line-height:1.6;margin:0;}
-
-  /* ---------- brand shelf ---------- */
-  .shelf{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;
-    padding:clamp(28px,5vw,56px) clamp(24px,5vw,64px) clamp(40px,6vw,72px);}
-  @media (max-width:900px){.shelf{grid-template-columns:repeat(2,1fr);}}
-  @media (max-width:560px){.shelf{grid-template-columns:1fr;}}
-
-  .plate{
-    position:relative;text-align:left;color:var(--paper);
-    background:linear-gradient(155deg,var(--steel),var(--navy) 80%);
-    border:none;border-radius:5px;padding:36px 30px 28px;min-height:180px;
-    display:flex;flex-direction:column;justify-content:space-between;
-    cursor:pointer;box-shadow:inset 0 0 0 1px rgba(247,245,241,.1);
-    transition:transform .2s ease, box-shadow .2s ease;
-  }
-  .plate:hover{box-shadow:inset 0 0 0 1px rgba(247,245,241,.22);}
-  .plate:active{transform:scale(.97);}
-  .plate::before{content:"";position:absolute;top:16px;left:26px;width:28px;height:2px;background:var(--brass);}
-  .plate-top{display:flex;align-items:center;justify-content:space-between;gap:12px;}
-  .plate-name{font-family:'Poppins',sans-serif;font-weight:600;font-size:1.55rem;letter-spacing:.05em;}
-  .plate-logo{height:52px;width:auto;max-width:160px;object-fit:contain;filter:brightness(0) invert(1);opacity:.85;}
-  .plate-logos{display:flex;align-items:center;gap:10px;}
-  .plate-logos img{height:42px;width:auto;max-width:120px;object-fit:contain;filter:brightness(0) invert(1);opacity:.85;}
-  .plate-meta{font-family:'Poppins',sans-serif;font-weight:400;font-size:.72rem;letter-spacing:.1em;text-transform:uppercase;color:rgba(247,245,241,.6);margin-top:10px;}
-
-  .plate--empty{
-    background:transparent;border:1px dashed rgba(247,245,241,.26);
-    align-items:center;justify-content:center;flex-direction:row;gap:10px;
-    color:rgba(247,245,241,.38);cursor:default;min-height:148px;
-  }
-  .plate--empty::before{display:none;}
-  .plate--empty .plus{font-size:1.3rem;color:var(--brass);}
-  .plate--empty span:last-child{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;}
-
-  footer{display:flex;justify-content:space-between;align-items:center;
-    padding:0 clamp(24px,5vw,64px) 40px;font-size:.7rem;letter-spacing:.06em;color:rgba(247,245,241,.38);}
-  .footer-actions{display:flex;align-items:center;gap:12px;}
-  .explore-btn{background:none;border:1px solid var(--brass);color:var(--brass);
-    padding:10px 22px;border-radius:3px;font-size:.76rem;letter-spacing:.12em;
-    text-transform:uppercase;cursor:pointer;font-family:inherit;transition:background .2s,color .2s;}
-  .explore-btn:hover{background:var(--brass);color:var(--navy);}
-
-  /* ---------- AI chat widget ---------- */
-  .ai-launcher{position:fixed;right:clamp(16px,4vw,40px);bottom:clamp(16px,4vw,40px);
-    width:60px;height:60px;border-radius:50%;background:var(--brass);color:var(--navy);
-    border:none;box-shadow:0 8px 24px rgba(0,0,0,.35);cursor:pointer;z-index:81;
-    display:flex;align-items:center;justify-content:center;}
-  .ai-launcher::before{content:"";position:absolute;inset:0;border-radius:50%;
-    background:var(--brass);opacity:.55;animation:ai-pulse 2.6s ease-out infinite;}
-  @keyframes ai-pulse{0%{transform:scale(1);opacity:.55;}100%{transform:scale(1.6);opacity:0;}}
-  @media (prefers-reduced-motion: reduce){.ai-launcher::before{animation:none;}}
-  .ai-launcher-spark{position:absolute;top:-4px;right:-4px;color:var(--navy);
-    background:var(--paper);border-radius:50%;padding:2px;box-shadow:0 2px 6px rgba(0,0,0,.25);}
-  .ai-chat{position:fixed;right:clamp(16px,4vw,40px);bottom:calc(clamp(16px,4vw,40px) + 76px);
-    width:min(360px,88vw);max-height:min(520px,72vh);background:var(--paper);color:var(--ink);
-    border-radius:12px;box-shadow:0 20px 50px rgba(0,0,0,.35);z-index:80;
-    display:flex;flex-direction:column;overflow:hidden;
-    opacity:0;transform:translateY(16px) scale(.97);pointer-events:none;
-    transition:opacity .25s ease,transform .25s ease;}
-  .ai-chat.open{opacity:1;transform:translateY(0) scale(1);pointer-events:auto;}
-  .ai-chat-head{display:flex;align-items:center;justify-content:space-between;
-    padding:14px 16px;background:var(--navy);color:var(--paper);flex-shrink:0;}
-  .ai-chat-head span{font-family:'Poppins',sans-serif;font-weight:600;font-size:.86rem;letter-spacing:.04em;}
-  .ai-chat-head-actions{display:flex;align-items:center;gap:12px;}
-  .ai-chat-fullpage{color:rgba(247,245,241,.7);font-size:.72rem;text-decoration:none;letter-spacing:.02em;
-    white-space:nowrap;}
-  .ai-chat-fullpage:hover{color:var(--paper);text-decoration:underline;}
-  .ai-chat-close{background:none;border:none;color:rgba(247,245,241,.7);font-size:.9rem;cursor:pointer;padding:2px 4px;}
-  .ai-chat-body{flex:1;overflow-y:auto;padding:14px 16px;display:flex;flex-direction:column;gap:10px;
-    font-family:'Poppins',sans-serif;}
-  .ai-chat-welcome{font-size:.8rem;color:var(--steel);line-height:1.5;}
-  .ai-msg{max-width:85%;padding:10px 13px;border-radius:12px;font-size:.82rem;line-height:1.5;}
-  .ai-msg.user{align-self:flex-end;background:var(--brass);color:var(--navy);border-radius:12px 12px 3px 12px;font-weight:500;}
-  .ai-msg.bot{align-self:flex-start;background:var(--pale);color:var(--ink);border-radius:12px 12px 12px 3px;}
-  .ai-msg.bot .ai-sources{margin-top:6px;font-size:.68rem;color:var(--steel);letter-spacing:.03em;}
-  .ai-chat-foot{display:flex;gap:8px;padding:12px;border-top:1px solid rgba(38,59,89,.12);flex-shrink:0;}
-  .ai-chat-foot input{flex:1;border:1px solid rgba(38,59,89,.2);border-radius:8px;padding:9px 12px;
-    font-family:inherit;font-size:.82rem;outline:none;}
-  .ai-chat-foot input:focus{border-color:var(--brass);}
-  .ai-chat-send{background:var(--brass);border:none;color:var(--navy);border-radius:8px;
-    width:38px;flex-shrink:0;cursor:pointer;font-size:1rem;}
-  .ai-chat-send:disabled{opacity:.5;cursor:default;}
-
-  /* ---------- auto-play badge ---------- */
-  .auto-badge{position:fixed;top:20px;left:50%;transform:translateX(-50%);z-index:70;
-    background:rgba(0,0,0,.6);backdrop-filter:blur(8px);color:var(--paper);
-    padding:10px 28px;border-radius:30px;font-size:.74rem;letter-spacing:.1em;
-    text-transform:uppercase;opacity:0;pointer-events:none;transition:opacity .4s;}
-  .auto-badge.show{opacity:1;pointer-events:auto;}
-
-  /* ---------- scrim ---------- */
-  .scrim{position:fixed;inset:0;background:rgba(13,20,30,.55);backdrop-filter:blur(2px);
-    opacity:0;pointer-events:none;transition:opacity .3s ease;z-index:40;}
-  .scrim.show{opacity:1;pointer-events:auto;}
-
-  /* ---------- drawer ---------- */
-  .drawer{
-    position:fixed;top:0;right:0;height:100%;width:min(560px,88vw);
-    background:var(--paper);color:var(--ink);
-    transform:translateX(100%);transition:transform .45s cubic-bezier(.16,1,.3,1);
-    z-index:50;padding:30px 32px;display:flex;flex-direction:column;
-    box-shadow:-16px 0 50px rgba(0,0,0,.3);
-  }
-  .drawer.open{transform:translateX(0);}
-  .drawer-close{align-self:flex-end;background:none;border:none;font-size:.76rem;
-    letter-spacing:.1em;text-transform:uppercase;color:var(--steel);cursor:pointer;padding:8px 4px;}
-  .drawer h2{font-family:'Poppins',sans-serif;font-weight:600;font-size:1.9rem;margin:8px 0 4px;}
-  .drawer-sub{color:var(--steel);font-size:.84rem;margin-bottom:26px;}
-  .drawer-list{display:flex;flex-direction:column;gap:14px;overflow-y:auto;}
-  .cat-card{
-    border:1px solid rgba(38,59,89,.16);border-radius:4px;padding:18px 20px;
-    display:flex;justify-content:space-between;align-items:center;cursor:pointer;
-    background:#fff;transition:border-color .2s, transform .15s;
-  }
-  .cat-card:active{transform:scale(.98);}
-  .cat-card:hover{border-color:var(--brass);}
-  .cc-title{font-family:'Poppins',sans-serif;font-weight:500;font-size:1.1rem;}
-  .cc-year{font-size:.7rem;color:var(--steel);letter-spacing:.08em;margin-top:4px;}
-  .cc-arrow{color:var(--brass);font-size:1.3rem;}
-
-  /* ---------- viewer ---------- */
-  .viewer{position:fixed;inset:0;background:var(--navy);z-index:60;
-    display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .3s;}
-  .viewer.open{opacity:1;pointer-events:auto;}
-  .viewer-bar{display:flex;align-items:center;justify-content:space-between;
-    padding:18px clamp(20px,4vw,48px);}
-  .viewer-title{font-family:'Poppins',sans-serif;font-weight:500;font-size:1rem;}
-  .viewer-progress{font-size:.76rem;letter-spacing:.08em;color:rgba(247,245,241,.6);}
-  #viewerClose{background:none;border:1px solid rgba(247,245,241,.3);color:var(--paper);
-    border-radius:3px;padding:8px 16px;font-size:.72rem;letter-spacing:.1em;
-    text-transform:uppercase;cursor:pointer;}
-
-  .page-stage{flex:1;display:flex;align-items:center;justify-content:center;
-    position:relative;padding:8px 76px 28px;overflow:auto;}
-  #pdfCanvas{background:#fff;box-shadow:0 30px 60px rgba(0,0,0,.35);
-    border-radius:2px;visibility:hidden;transition:transform .2s ease;transform-origin:center center;}
-
-  /* ---------- zoom controls ---------- */
-  .zoom-controls{display:flex;align-items:center;gap:8px;}
-  .zoom-btn{background:none;border:1px solid rgba(247,245,241,.3);color:var(--paper);
-    border-radius:3px;width:36px;height:36px;font-size:1.2rem;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;}
-  .zoom-btn:hover{background:rgba(247,245,241,.1);}
-  .zoom-level{font-size:.72rem;letter-spacing:.08em;color:rgba(247,245,241,.6);min-width:40px;text-align:center;}
-  .loading{position:absolute;color:rgba(247,245,241,.7);font-size:.82rem;
-    letter-spacing:.08em;text-transform:uppercase;}
-
-  .page-nav{
-    position:absolute;top:50%;transform:translateY(-50%);width:52px;height:52px;
-    border-radius:50%;border:1px solid rgba(247,245,241,.25);background:rgba(247,245,241,.06);
-    color:var(--paper);font-size:1.5rem;line-height:1;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-  }
-  .page-nav.prev{left:clamp(12px,3vw,32px);}
-  .page-nav.next{right:clamp(12px,3vw,32px);}
-  .page-nav:disabled{opacity:.22;cursor:default;}
-  .page-nav:active{transform:translateY(-50%) scale(.92);}
-
-  /* ---------- splash screen ---------- */
-  .splash{position:fixed;inset:0;z-index:100;background:var(--navy);
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    gap:28px;cursor:pointer;transition:opacity .5s ease;}
-  .splash.hide{opacity:0;pointer-events:none;}
-  .splash img{height:100px;width:auto;}
-  .splash-text{font-size:.82rem;letter-spacing:.18em;text-transform:uppercase;
-    color:rgba(247,245,241,.5);animation:pulse 2s ease-in-out infinite;}
-  @keyframes pulse{0%,100%{opacity:.5;}50%{opacity:1;}}
-
-  @media (prefers-reduced-motion: reduce){*{transition:none !important;}}
-</style>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,500;0,9..144,600;1,9..144,500&family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
 </head>
 <body>
 
   <div class="splash" id="splash">
     <img src="assets/white-transparetn.png" alt="Khalaifat">
-    <div class="splash-text">Tap to enter</div>
+    <div class="splash-rule"></div>
+    <div class="splash-text">اضغط للدخول — Tap to enter</div>
   </div>
 
-  <header class="topbar">
+  <header class="topbar hairline-rule">
     <div class="brandmark">
       <img src="assets/white-transparetn.png" alt="Khalaifat Catalogues">
     </div>
-    <div class="hint">Tap a brand to browse</div>
+    <div class="hint">اختر علامة — Tap a brand to browse</div>
   </header>
 
   <main>
-    <section class="hero">
-      <p class="eyebrow">Digital Showroom</p>
-      <h1>Catalogues,<br><em>at the counter.</em></h1>
-      <p class="hero-sub">Every brand catalogues</p>
+    <section class="hero hairline-rule">
+      <div class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">Digital Showroom</p>
+          <h1>Catalogues,<br><em>at the counter.</em></h1>
+          <p class="hero-sub">Every brand catalogues</p>
+          <p class="hero-ar-echo" dir="rtl">كل كتالوجات علاماتنا التجارية — في مكان واحد</p>
+        </div>
+        <div class="hero-index" id="heroIndex" aria-hidden="true"></div>
+      </div>
     </section>
 
     <section class="shelf" id="shelf" aria-label="Brand selection"></section>
@@ -301,11 +101,12 @@
       <div class="viewer-progress" id="viewerProgress"></div>
     </div>
     <button class="page-nav prev" id="prevPage" aria-label="Previous page">‹</button>
-    <div class="page-stage">
+    <div class="page-stage trim">
       <canvas id="pdfCanvas"></canvas>
       <div class="loading" id="viewerLoading">Loading…</div>
     </div>
     <button class="page-nav next" id="nextPage" aria-label="Next page">›</button>
+    <div class="auto-progress" id="autoProgress"></div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -421,9 +222,11 @@
 
   function buildShelf(){
     shelf.innerHTML = '';
-    BRANDS.forEach(brand=>{
+    shelf.classList.remove('loaded');
+    BRANDS.forEach((brand,i)=>{
       const el = document.createElement('button');
-      el.className = 'plate';
+      el.className = 'plate trim';
+      el.style.setProperty('--i', i);
       const logoHtml = brand.logos && brand.logos.length === 1
         ? `<img class="plate-logo" src="${brand.logos[0]}" alt="${brand.name}">`
         : brand.logos && brand.logos.length > 1
@@ -434,7 +237,10 @@
           <div class="plate-name">${brand.name}</div>
           ${logoHtml}
         </div>
-        <div class="plate-meta">${brand.catalogues.length} catalogue${brand.catalogues.length>1?'s':''}</div>`;
+        <div class="plate-meta">
+          <span>${brand.catalogues.length} catalogue${brand.catalogues.length>1?'s':''}</span>
+          <span class="plate-arrow">›</span>
+        </div>`;
       el.addEventListener('click', ()=>openDrawer(brand));
       shelf.appendChild(el);
     });
@@ -444,6 +250,18 @@
       el.innerHTML = `<span class="plus">+</span><span>Add brand</span>`;
       shelf.appendChild(el);
     }
+    // One orchestrated reveal moment on load — add the class after the browser has
+    // had a frame to paint the initial (opacity:0) state, or the animation never fires.
+    requestAnimationFrame(()=>requestAnimationFrame(()=>shelf.classList.add('loaded')));
+  }
+
+  function buildHeroIndex(){
+    const heroIndex = document.getElementById('heroIndex');
+    const totalCatalogues = BRANDS.reduce((sum,b)=>sum+b.catalogues.length,0);
+    heroIndex.innerHTML = `
+      <div class="hero-stat"><div class="hero-stat-num">${BRANDS.length}</div><div class="hero-stat-label">Brands</div></div>
+      <div class="hero-stat"><div class="hero-stat-num">${totalCatalogues}</div><div class="hero-stat-label">Catalogues</div></div>
+      <div class="hero-stat"><div class="hero-stat-num">AR · EN</div><div class="hero-stat-label">AI Assistant</div></div>`;
   }
 
   function openDrawer(brand){
@@ -452,10 +270,11 @@
     drawerList.innerHTML    = '';
     brand.catalogues.forEach(cat=>{
       const card = document.createElement('div');
-      card.className = 'cat-card';
+      card.className = 'cat-card trim';
       card.tabIndex = 0;
       card.innerHTML = `
-        <div>
+        <div class="cc-thumb"><canvas></canvas></div>
+        <div class="cc-body">
           <div class="cc-title">${cat.title}</div>
           <div class="cc-year">${cat.year}</div>
         </div>
@@ -465,6 +284,7 @@
       card.addEventListener('click', ()=>openViewer(brand, cat));
       card.addEventListener('keydown', e=>{ if(e.key==='Enter') openViewer(brand,cat); });
       drawerList.appendChild(card);
+      renderThumb(cat.file, card.querySelector('.cc-thumb canvas'));
     });
     scrim.classList.add('show');
     drawer.classList.add('open');
@@ -491,6 +311,39 @@
   function prefetchPdf(file){
     if(pdfCache[file]) return;
     pdfCache[file] = pdfjsLib.getDocument(file).promise;
+  }
+
+  // Drawer-card cover thumbnails: page 1 of each catalogue, rendered lazily when the
+  // drawer opens (not preloaded for every brand up front) and cached by file so
+  // reopening a drawer never re-renders. Failure is tolerated silently — the card's
+  // --pale placeholder background is a complete-looking result on its own.
+  const thumbCache = {};
+  const THUMB_WIDTH = 72;
+  async function renderThumb(file, canvasEl){
+    if(!canvasEl) return;
+    if(thumbCache[file]){
+      const img = new Image();
+      img.onload = ()=>{
+        canvasEl.width = img.width; canvasEl.height = img.height;
+        canvasEl.getContext('2d').drawImage(img, 0, 0);
+      };
+      img.src = thumbCache[file];
+      return;
+    }
+    try{
+      prefetchPdf(file);
+      const doc = await pdfCache[file];
+      const page = await doc.getPage(1);
+      const base = page.getViewport({ scale: 1 });
+      const scale = THUMB_WIDTH / base.width;
+      const viewport = page.getViewport({ scale });
+      canvasEl.width = viewport.width;
+      canvasEl.height = viewport.height;
+      await page.render({ canvasContext: canvasEl.getContext('2d'), viewport }).promise;
+      thumbCache[file] = canvasEl.toDataURL();
+    }catch(err){
+      // no thumbnail — the placeholder block stays, nothing jumps.
+    }
   }
 
   async function openViewer(brand, cat){
@@ -550,6 +403,7 @@
     viewerProgress.textContent = `${num} / ${pdfDoc.numPages}`;
     prevBtn.disabled = num <= 1;
     nextBtn.disabled = num >= pdfDoc.numPages;
+    viewer.style.setProperty('--auto-progress', num / pdfDoc.numPages);
     rendering = false;
   }
 
@@ -617,6 +471,7 @@
   window.addEventListener('resize', ()=>{ if(pdfDoc) renderPage(pageNum); });
 
   buildShelf();
+  buildHeroIndex();
 
   /* ==========================================================
      AI CHAT WIDGET
@@ -633,10 +488,13 @@
   aiChatFullLink.href = '/chat';
   const aiChatWelcomeHTML = aiChatBody.innerHTML;
   let aiBusy = false;
+  // Conversation memory (see AI_ASSISTANT_IMPROVEMENTS.md Task 4 — server.py already
+  // accepts + uses `history`). Named aiHistory, not history, to avoid shadowing window.history.
+  let aiHistory = [];
 
   function aiAddMessage(text, type, sources){
     const div = document.createElement('div');
-    div.className = `ai-msg ${type}`;
+    div.className = `ai-msg ${type}` + (type === 'bot' ? ' trim trim--tight' : '');
     div.dir = 'auto';
     div.textContent = text;
     if(sources && sources.length){
@@ -662,11 +520,13 @@
       const res = await fetch('/ask', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question })
+        body: JSON.stringify({ question, history: aiHistory.slice(-6) })
       });
       const data = await res.json();
       thinking.remove();
       aiAddMessage(data.answer, 'bot', data.sources);
+      aiHistory.push({ role: 'user', content: question });
+      aiHistory.push({ role: 'assistant', content: data.answer });
     }catch(err){
       thinking.remove();
       aiAddMessage('AI assistant is offline — make sure the AI server is running.', 'bot');
@@ -689,6 +549,7 @@
     aiChat.setAttribute('aria-hidden', 'true');
     aiChatBody.innerHTML = aiChatWelcomeHTML;
     aiChatInput.value = '';
+    aiHistory = []; // kiosk reset — next customer starts a clean conversation
   }
 
   function toggleAiChat(){
@@ -762,6 +623,7 @@
     if(autoPlaying) return;
     autoPlaying = true;
     autoBadge.classList.add('show');
+    viewer.classList.add('auto-active');
     autoCatList = buildCatalogueList();
     if(autoCatList.length === 0) { stopAutoPlay(); return; }
     autoCatIdx = 0;
@@ -818,6 +680,7 @@
     autoPlaying = false;
     clearTimeout(autoTimer);
     autoBadge.classList.remove('show');
+    viewer.classList.remove('auto-active');
     prevBtn.style.display = '';
     nextBtn.style.display = '';
     document.getElementById('viewerClose').style.display = '';

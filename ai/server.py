@@ -545,3 +545,4 @@ async def chat_ui():
 # servers — customers/the tablet only need one URL and one port now.
 app.mount("/assets", StaticFiles(directory=f"{SITE_ROOT}/assets"), name="assets")
 app.mount("/pdfs", StaticFiles(directory=f"{SITE_ROOT}/pdfs"), name="pdfs")
+app.mount("/css", StaticFiles(directory=f"{SITE_ROOT}/css"), name="css")
