@@ -21,6 +21,10 @@ PDF_KB_FILE = "pdf_kb.json"
 # instead of the larger deepseek-v4 / 70B+ models on this same endpoint — those
 # were measured timing out (>45s, likely oversubscribed on the free tier) while
 # this one answers reliably in ~3-5s with correct English AND Arabic output.
+# Checked qwen/qwen2.5-7b-instruct as a stronger-Arabic alternative (2026-07-05):
+# not served on this endpoint — the only Qwen models available are 80B/122B/397B
+# MoE models, well outside kiosk-latency budget. Kept llama; see Arabic-language
+# rule in generate_answer() instead.
 MODEL = "meta/llama-3.1-8b-instruct"
 NVIDIA_BASE_URL = "https://integrate.api.nvidia.com/v1"
 
@@ -92,9 +96,14 @@ print(f"Loading embedding model: {EMBED_MODEL}")
 embed_model = SentenceTransformer(EMBED_MODEL)
 print("Server ready!")
 
+class Turn(BaseModel):
+    role: str      # "user" or "assistant"
+    content: str
+
 class Question(BaseModel):
     question: str
     language: str = "auto"
+    history: list[Turn] = []
 
 # Arabic transliterations of brand names — the Latin-script typo correction below can't
 # see these at all, which was silently sending Arabic brand questions to a full, mixed
@@ -153,28 +162,151 @@ def find_sku_match(question: str):
             return SKU_INDEX[word]
     return None
 
+# ---------------------------------------------------------------------------
+# Structured pre-filter / sort. The product KB has clean fields (price,
+# special_price, stock, specs.rating, categories), but a pure semantic top-K
+# can't answer "cheapest", "in stock", "on offer", "under 300 BHD" or "A++
+# rating" — the right rows simply may not be in the semantic top-K. So for
+# those intents we filter/sort on the real fields first, then let the dense
+# search rank whatever remains.
+# ---------------------------------------------------------------------------
+SUPERLATIVE_K = 5
+
+def effective_price(p: dict) -> float:
+    sp = p.get("special_price") or 0
+    return sp if 0 < sp < p["price"] else p["price"]
+
+def _name_and_cats(p: dict) -> str:
+    return (p.get("name", "") + " " + " ".join(p.get("categories", []))).lower()
+
+# (regex that may appear in the QUESTION) -> (substring present in the catalogue's
+# name/category taxonomy). Arabic triggers map to the English catalogue term.
+CATEGORY_MAP = [
+    (r"dishwash|غسالة\s*صحون|جلاي", "dishwash"),
+    (r"\boven|فرن", "oven"),
+    (r"\bhob\b|cooktop|موقد", "hob"),
+    (r"fridge|refrigerat|ثلاج", "refriger"),
+    (r"washing\s*machine|washer|غسالة\s*ملابس", "laundry"),
+    (r"\bdryer\b|نشاف|مجفف", "dryer"),
+    (r"hood|chimney|extractor|شفاط|مدخنة|هود", "chimney"),
+    (r"microwave|مايكروويف|ميكروويف", "microwave"),
+    (r"kettle|غلاي", "kettle"),
+    (r"coffee|قهوة|اسبريسو|إسبريسو", "coffee"),
+    (r"\bsink\b|حوض|مغسلة", "sink"),
+    (r"freezer|فريزر|مجمد", "freezer"),
+    (r"toaster|محمصة|توستر", "toaster"),
+    (r"blender|خلاط", "blend"),
+    (r"vacuum|مكنسة", "vacuum"),
+    # "irons" (plural, the category-tree term), not "iron" — the singular also
+    # matches "Cast Iron" hob/grate descriptions, which aren't clothes irons.
+    (r"\biron\b|مكواة", "irons"),
+    (r"\bcooker\b|\bstove\b|بوتاجاز", "cooker"),
+]
+
+def _detect_category(q: str):
+    for trigger, sub in CATEGORY_MAP:
+        if re.search(trigger, q):
+            return sub
+    return None
+
+def structured_prefilter(question: str, base: list):
+    """Return (narrowed_pool, sort_dir). Category is a SOFT filter (never claim a
+    brand lacks a product just because the taxonomy names it differently), but if a
+    named category matches nothing we suppress superlative sorting so we don't hand
+    the model 'the cheapest hood' as the answer to 'the cheapest dishwasher'."""
+    q = question.lower()
+    pool = list(base)
+
+    cat_requested = _detect_category(q)
+    cat_matched = True
+    if cat_requested:
+        cat_pool = [i for i in pool if cat_requested in _name_and_cats(products[i])]
+        if cat_pool:
+            pool = cat_pool
+        else:
+            cat_matched = False
+
+    def soft(pred):
+        nonlocal pool
+        filtered = [i for i in pool if pred(products[i])]
+        if filtered:
+            pool = filtered
+
+    if re.search(r"in stock|available|متوفر|بالمخزون", q):
+        soft(lambda p: p["status"].get("in_stock") and (p["status"].get("qty") or 0) > 0
+                       and not p["status"].get("coming_soon"))
+    if re.search(r"\boffers?\b|\bsale\b|discount|deal|عرض|عروض|تخفيض|خصم", q):
+        soft(lambda p: (p.get("special_price") or 0) > 0 and p["special_price"] < p["price"])
+    cap = re.search(r"(?:under|below|less than|cheaper than|max(?:imum)?|أقل من|تحت|حتى)\s*(\d+(?:\.\d+)?)", q)
+    if cap:
+        limit = float(cap.group(1)); soft(lambda p: effective_price(p) <= limit)
+    rating = re.search(r"\bA\+{1,3}", question) or re.search(r"\bA\b(?=\s*(?:energy|rating|class))", question)
+    if rating:
+        tok = rating.group(0).strip().upper()
+        soft(lambda p: tok in str((p.get("specs") or {}).get("rating", "")).upper())
+
+    sort_dir = None
+    if re.search(r"cheapest|lowest\s*price|most affordable|least expensive|أرخص|ارخص|أقل سعر", q):
+        sort_dir = "asc"
+    elif re.search(r"most expensive|priciest|highest\s*price|dearest|أغلى|أعلى سعر", q):
+        sort_dir = "desc"
+    if sort_dir and not cat_matched:
+        sort_dir = None
+    return pool, sort_dir
+
+def contextualize(question: str, history: list) -> str:
+    """Follow-ups drop the brand/category ('which is cheapest?'). If the current
+    question carries neither, borrow the most recent user question, so brand
+    filtering, category prefiltering, and the dense embedding all see the topic.
+    Only retrieval uses this — the model still sees the real question.
+
+    Known limitation: this only reaches one question back. A 3-hop chain
+    ("Show me Bosch ovens" -> "under 300?" -> "and the black one?") can lose the
+    thread on the third turn. The robust fix is an LLM query-rewrite step, but
+    that's a second model call (~3-5s) per question — not acceptable kiosk
+    latency, so this deterministic single-hop borrow is what ships."""
+    _, brand = correct_brand_typos(question)
+    if brand or _detect_category(question.lower()):
+        return question
+    for turn in reversed(history):
+        if turn.role == "user":
+            return turn.content + " — " + question
+    return question
+
 def find_relevant_products(question: str, top_k: int = TOP_K):
     # A named brand (even misspelled) should only pull products from that brand —
     # otherwise a global search gets drowned out by whichever brand has the most
     # products (Bosch has 317 of 531). A brand that's PDF-only (e.g. Cosentino)
     # has no entry in BRAND_INDICES, so this correctly yields zero products.
     corrected_question, brand = correct_brand_typos(question)
-    candidate_indices = list(BRAND_INDICES.get(brand, [])) if brand else list(range(len(products)))
-    if not candidate_indices:
+    base = list(BRAND_INDICES.get(brand, [])) if brand else list(range(len(products)))
+    if not base:
         return [], brand
 
-    # e5 requires the "query: " prefix on the question side.
+    pool, sort_dir = structured_prefilter(question, base)
+    if not pool:
+        return [], brand
+
+    sku_idx = find_sku_match(question)
+
+    # Superlative ("cheapest" / "most expensive"): answer from the true sorted
+    # extreme, not a semantic guess.
+    if sort_dir:
+        ranked = sorted(pool, key=lambda i: effective_price(products[i]),
+                        reverse=(sort_dir == "desc"))[:SUPERLATIVE_K]
+        if sku_idx is not None and sku_idx not in ranked:
+            ranked = [sku_idx] + ranked[:SUPERLATIVE_K - 1]
+        return [{"product": products[i], "score": effective_price(products[i])} for i in ranked], brand
+
+    # Otherwise dense-rank WITHIN the filtered pool, so category/stock/offer/price
+    # filters sharpen the semantic search instead of competing with it.
     q_emb = embed_model.encode(
         [QUERY_PREFIX + corrected_question], normalize_embeddings=True
     )[0].astype(np.float32)
     scores = embeddings_matrix @ q_emb
-
-    ranked = sorted(candidate_indices, key=lambda i: -scores[i])[:top_k]
-
-    sku_idx = find_sku_match(question)
+    ranked = sorted(pool, key=lambda i: -scores[i])[:top_k]
     if sku_idx is not None and sku_idx not in ranked:
         ranked = [sku_idx] + ranked[:top_k - 1]
-
     return [{"product": products[i], "score": float(scores[i])} for i in ranked], brand
 
 def find_relevant_pdf_chunks(question: str, top_k: int = PDF_TOP_K):
@@ -280,10 +412,21 @@ def is_wrong_language(answer: str, answer_language: str) -> bool:
         return letters > 10 and arabic_chars < letters * 0.3
     return False
 
-def generate_answer(question: str, context: str, answer_language: str, retry: bool = False) -> str:
-    rule = f"Respond ONLY in {answer_language}."
+def generate_answer(question: str, context: str, answer_language: str, history: list = [], retry: bool = False) -> str:
+    if answer_language == "Arabic":
+        # Models follow same-language instructions better. Pinned details: keep
+        # product names/SKUs in Latin (transliterating them is unusable to
+        # customers and staff at the till), and keep the "199.000 BHD" price
+        # format (fix_price_formatting below is the belt-and-suspenders backup).
+        rule = ("أجب باللغة العربية الفصحى فقط، بأسلوب سلس وواضح ولغة رسمية مهذبة. "
+                "اترك أسماء المنتجات والعلامات التجارية وأرقام SKU كما هي بالأحرف اللاتينية، "
+                "واكتب الأسعار بالأرقام اللاتينية مثل 199.000 BHD. لا تخلط جملاً إنجليزية في الإجابة.")
+    else:
+        rule = f"Respond ONLY in {answer_language}."
     if retry:
-        rule = "Your previous answer was written in the wrong language. " + rule
+        wrong_language_notice = "إجابتك السابقة كانت بلغة خاطئة. " if answer_language == "Arabic" \
+            else "Your previous answer was written in the wrong language. "
+        rule = wrong_language_notice + rule
 
     system_prompt = f"""You are a helpful showroom assistant for Khalaifat Co, a home appliances and kitchen retailer in Bahrain. You answer customer questions using ONLY the information given with each question, which comes from one or both of:
 1. Live product database entries (brand, SKU, exact price, stock, specs) for appliance brands.
@@ -295,12 +438,14 @@ Be concise and helpful. Use the exact price, availability and spec values given 
 
     user_content = f"Product Information:\n{context}\n\nCustomer Question: {question}\n\nReminder: {rule}"
 
+    messages = [{"role": "system", "content": system_prompt}]
+    for turn in history[-6:]:
+        messages.append({"role": turn.role, "content": turn.content})
+    messages.append({"role": "user", "content": user_content})
+
     completion = llm_client.chat.completions.create(
         model=MODEL,
-        messages=[
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": user_content},
-        ],
+        messages=messages,
         temperature=0.3,
         max_tokens=1024,
     )
@@ -334,8 +479,9 @@ def strip_bracket_tags(text: str) -> str:
 
 @app.post("/ask")
 async def ask(q: Question):
-    product_results, _ = find_relevant_products(q.question)
-    pdf_results, _ = find_relevant_pdf_chunks(q.question)
+    retrieval_q = contextualize(q.question, q.history)
+    product_results, _ = find_relevant_products(retrieval_q)
+    pdf_results, _ = find_relevant_pdf_chunks(retrieval_q)
 
     if not product_results and not pdf_results:
         return {"answer": "لم أجد معلومات كافية عن المنتجات للإجابة على هذا السؤال. / I couldn't find enough product information to answer this question.", "sources": []}
@@ -354,7 +500,7 @@ async def ask(q: Question):
     answer_language = "Arabic" if is_arabic else "English"
 
     try:
-        answer = generate_answer(q.question, context, answer_language)
+        answer = generate_answer(q.question, context, answer_language, q.history)
         # The model occasionally slips into another language or script instead of the
         # customer's. Catch that and force a corrective rewrite rather than silently
         # returning the wrong language. Two retries: a single retry occasionally lands
@@ -363,7 +509,7 @@ async def ask(q: Question):
         for _ in range(2):
             if not is_wrong_language(answer, answer_language):
                 break
-            answer = generate_answer(q.question, context, answer_language, retry=True)
+            answer = generate_answer(q.question, context, answer_language, q.history, retry=True)
         answer = strip_markdown(answer)
         answer = fix_price_formatting(answer)
         answer = strip_bracket_tags(answer)

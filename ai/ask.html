@@ -199,6 +199,7 @@
   const chatArea = document.getElementById('chatArea');
   const input = document.getElementById('input');
   const sendBtn = document.getElementById('sendBtn');
+  const history = [];
 
   // Tablets' on-screen keyboard shrinks the *visible* area without shrinking
   // 100vh/height:100% in most mobile browsers, so the input bar at the bottom
@@ -264,11 +265,13 @@
       const res = await fetch(`${SERVER}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question: q })
+        body: JSON.stringify({ question: q, history: history.slice(-6) })
       });
       const data = await res.json();
       thinking.remove();
       addMsg(data.answer, 'ai', data.sources);
+      history.push({ role: 'user', content: q });
+      history.push({ role: 'assistant', content: data.answer });
     } catch (e) {
       thinking.remove();
       addMsg('⚠️ Could not connect to AI server. Make sure the server is running.', 'ai');
