@@ -200,6 +200,22 @@
   const input = document.getElementById('input');
   const sendBtn = document.getElementById('sendBtn');
 
+  // Tablets' on-screen keyboard shrinks the *visible* area without shrinking
+  // 100vh/height:100% in most mobile browsers, so the input bar at the bottom
+  // of this flex-column page can end up rendered below the visible area, behind
+  // the keyboard. Force the page to the actual visible height via the
+  // VisualViewport API so the layout compresses to fit above the keyboard.
+  if (window.visualViewport) {
+    const fitToVisualViewport = () => {
+      document.documentElement.style.height = window.visualViewport.height + 'px';
+      document.body.style.height = window.visualViewport.height + 'px';
+      window.scrollTo(0, 0);
+    };
+    window.visualViewport.addEventListener('resize', fitToVisualViewport);
+    window.visualViewport.addEventListener('scroll', fitToVisualViewport);
+    fitToVisualViewport();
+  }
+
   input.addEventListener('keydown', e => {
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendQuestion(); }
   });

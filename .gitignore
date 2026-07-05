@@ -1,4 +1,4 @@
 node_modules/
 .DS_Store
-ai/knowledge_base.json
-ai/index_log.txt
+ai/product_kb.json
+ai/pdf_kb.json

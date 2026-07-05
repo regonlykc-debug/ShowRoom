@@ -1,6 +1,6 @@
 @echo off
 echo ============================================
-echo   Khalaifat Showroom AI - Index PDFs
+echo   Khalaifat Showroom AI - Index Products
 echo ============================================
-python index_pdfs.py
+python index_products.py
 pause

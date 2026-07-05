@@ -4,14 +4,12 @@ echo   Khalaifat Showroom AI - Setup
 echo ============================================
 
 echo.
-echo [1/3] Installing Python packages...
-pip install fastapi uvicorn pdfplumber sentence-transformers numpy requests python-dotenv
+echo [1/2] Installing Python packages...
+pip install fastapi uvicorn sentence-transformers numpy openai pdfplumber python-dotenv
 
 echo.
-echo [2/3] Pulling AI model (qwen2.5:7b)...
-echo This may take a few minutes on first run...
-ollama pull qwen2.5:7b
-
-echo.
-echo [3/3] Done! Now run: 2_index_pdfs.bat
+echo [2/2] Done! Before starting the server, get a free API key at
+echo build.nvidia.com and set it:
+echo   setx NVIDIA_API_KEY nvapi-...
+echo Then run: 2_index_products.bat (and 2b_index_pdf_brands.bat once)
 pause

@@ -3,14 +3,13 @@ echo "============================================"
 echo "  Khalaifat Showroom AI - Starting Server"
 echo "============================================"
 echo ""
-echo "Tablet can connect at: http://192.168.100.58:8000"
+echo "Serves the whole site + AI chat on one port."
+echo "Tablet can connect at: http://192.168.100.58:8080"
 echo ""
 
-# Start Ollama in background if not running
-if ! pgrep -x "ollama" > /dev/null; then
-    echo "Starting Ollama..."
-    ollama serve &
-    sleep 3
+if [ -z "$NVIDIA_API_KEY" ]; then
+    echo "ERROR: NVIDIA_API_KEY is not set. Run: export NVIDIA_API_KEY=nvapi-..."
+    exit 1
 fi
 
-python3 -m uvicorn server:app --host 0.0.0.0 --port 8000
+python3 -m uvicorn server:app --host 0.0.0.0 --port 8080

@@ -12,19 +12,17 @@ warnings.filterwarnings("ignore")
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
+# Only these brands lack rows in products_clean.json (they're cabinetry/surface
+# brands the store's product export doesn't cover) — everything else (Bosch,
+# Beko, Elba, Elica, UKINOX, TurboAir) already has accurate structured data via
+# index_products.py, so re-parsing their PDFs would just reintroduce the
+# unstructured-text quality problems that export was built to fix.
 PDFS_DIR = "../pdfs"
-OUTPUT_FILE = "knowledge_base.json"
+PDF_BRAND_FOLDERS = {"nolte", "express", "cosentino", "poggenpohl"}
+OUTPUT_FILE = "pdf_kb.json"
 
-# multilingual-e5-base gives much stronger Arabic/English -> Italian/German
-# cross-lingual retrieval than the old MiniLM model, at a size this machine's
-# 7.8GB RAM (no GPU) can handle safely. e5-large is stronger still but was too
-# risky to load alongside PDF extraction on this hardware — if you move this
-# to a bigger machine, e5-large is worth revisiting. The server MUST use
-# whatever model is set here.
+# MUST match server.py.
 EMBED_MODEL = "intfloat/multilingual-e5-base"
-
-# e5 requires every passage to start with "passage: " (and every query with
-# "query: " on the server side). Skipping this silently degrades retrieval.
 PASSAGE_PREFIX = "passage: "
 
 # Chunk by characters on sentence/line boundaries rather than a blind word count,
@@ -42,10 +40,10 @@ def extract_page(page):
     """Return (prose_text, table_text) for one page.
 
     Tables are extracted on every page, not just sparse ones — spec tables
-    (dimensions, capacity, energy class) are exactly what customers ask about
-    and were being dropped whenever a page also had a paragraph of prose.
-    They're kept separate and labelled [SPECS] so a later chunk boundary can't
-    split a spec row in half.
+    (dimensions, colours, finishes) are exactly what customers ask about and
+    were being dropped whenever a page also had a paragraph of prose. They're
+    kept separate and labelled [SPECS] so a later chunk boundary can't split
+    a spec row in half.
     """
     prose = ""
     try:
@@ -142,14 +140,18 @@ def get_brand_from_path(path):
 
 
 # ---------------------------------------------------------------------------
-# Phase 1: extract every PDF into raw text chunks. No embedding model loaded
-# yet — keeps peak memory during the heaviest part (full-page table
-# extraction across ~900 pages) as low as possible.
+# Phase 1: extract every PDF (in the allowlisted brand folders only) into raw
+# text chunks. No embedding model loaded yet — keeps peak memory during the
+# heaviest part (full-page table extraction) as low as possible.
 # ---------------------------------------------------------------------------
 all_chunks = []
 
-print(f"Scanning PDFs in {PDFS_DIR}...")
+print(f"Scanning PDFs in {PDFS_DIR} (brands: {sorted(PDF_BRAND_FOLDERS)})...")
 for root, dirs, files in os.walk(PDFS_DIR):
+    dirs[:] = [d for d in dirs if d.lower() in PDF_BRAND_FOLDERS]
+    brand_folder = os.path.basename(root).lower()
+    if brand_folder not in PDF_BRAND_FOLDERS:
+        continue
     for fname in sorted(files):
         if not fname.lower().endswith(".pdf"):
             continue
@@ -176,7 +178,6 @@ for root, dirs, files in os.walk(PDFS_DIR):
 # the embedding model needs to fit in memory for this phase.
 # ---------------------------------------------------------------------------
 print(f"\nLoading embedding model: {EMBED_MODEL}")
-print("(first run downloads it — one-time)")
 model = SentenceTransformer(EMBED_MODEL, device="cpu")
 
 print(f"\nGenerating embeddings for {len(all_chunks)} chunks...")
@@ -195,7 +196,6 @@ for i, chunk in enumerate(all_chunks):
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
     json.dump(all_chunks, f, ensure_ascii=False)
 
-print(f"\nDone! Knowledge base saved to {OUTPUT_FILE}")
+print(f"\nDone! PDF knowledge base saved to {OUTPUT_FILE}")
 print(f"Total chunks: {len(all_chunks)}")
-print(f"Embedding model: {EMBED_MODEL}")
-print("\nNow run: 3_start_server.sh / 3_start_server.bat (server.py must use the SAME model)")
+print(f"Brands covered: {sorted({c['brand'] for c in all_chunks})}")
